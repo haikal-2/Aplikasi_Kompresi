@@ -155,4 +155,4 @@ if uploaded_files:
         st.bar_chart(chart_data)
 
 else:
-    st.info("💡 Silakan klik tombol 'Browse files', blok 10 gambar Anda, dan mari kita uji!")
+    st.info("💡 Tips: Anda bisa memblok/memilih 10 file sekaligus di dalam folder saat menekan tombol Browse files.")
