@@ -53,13 +53,51 @@ def compress_svd(image_pil, k_values):
     img_bytes = buffer.getvalue()
     return compressed_img, len(img_bytes), img_bytes
 
+def compress_combined(image_pil, quality_value, n_colors, k_values):
+    """
+    Fungsi ini menggabungkan ketiga algoritma secara berurutan:
+    K-Means -> SVD -> JPEG Standard
+    """
+    # 1. K-Means
+    img_np = np.array(image_pil)
+    h, w, c = img_np.shape
+    pixels = img_np.reshape(-1, c)
+    kmeans = MiniBatchKMeans(n_clusters=n_colors, random_state=42, n_init=3)
+    labels = kmeans.fit_predict(pixels)
+    colors = kmeans.cluster_centers_.astype(np.uint8)
+    compressed_pixels = colors[labels]
+    compressed_np = compressed_pixels.reshape(h, w, c)
+    img_k = Image.fromarray(compressed_np)
+
+    # 2. SVD
+    img_np_2 = np.array(img_k)
+    compressed_channels = []
+    for i in range(3):
+        channel = img_np_2[:, :, i].astype(float)
+        U, S, Vt = np.linalg.svd(channel, full_matrices=False)
+        compressed_channel = np.dot(U[:, :k_values], np.dot(np.diag(S[:k_values]), Vt[:k_values, :]))
+        compressed_channels.append(compressed_channel)
+    compressed_np_2 = np.stack(compressed_channels, axis=2)
+    compressed_np_2 = np.clip(compressed_np_2, 0, 255).astype(np.uint8)
+    img_svd = Image.fromarray(compressed_np_2)
+
+    # 3. JPEG Standard
+    buffer = io.BytesIO()
+    img_svd.save(buffer, format="JPEG", quality=quality_value)
+    buffer.seek(0)
+    img_bytes = buffer.getvalue()
+    final_img = Image.open(buffer)
+    
+    return final_img, len(img_bytes), img_bytes
+
+
 # ==========================================
-# ANTARMUKA PENGGUNA (GUI) - VERSI PRESENTASI + SVD
+# ANTARMUKA PENGGUNA (GUI) - VERSI PRESENTASI + SVD + KOMBINASI
 # ==========================================
 st.set_page_config(page_title="Studi Komparasi 3 Algoritma", layout="wide", page_icon="⚖️")
 
 st.title("⚖️ Studi Komparasi 3 Algoritma Kompresi (JPEG)")
-st.write("Membandingkan 3 pendekatan berbeda: **JPEG Standard, K-Means Clustering, dan Singular Value Decomposition (SVD)**.")
+st.write("Membandingkan performa individu: **JPEG Standard, K-Means, dan SVD**, serta **Kompresi Gabungan (Hybrid)** dari ketiganya.")
 
 # 1. Area Upload Gambar
 uploaded_files = st.file_uploader(
@@ -97,42 +135,51 @@ if uploaded_files:
                     original_img = Image.open(uploaded_file).convert("RGB")
                     size_ori = len(uploaded_file.getvalue())
                     
-                    # Jalankan 3 Algoritma
+                    # Jalankan 3 Algoritma + 1 Kombinasi
                     img_jpeg, size_jpeg, byte_jpeg = compress_jpeg_standard(original_img, jpeg_q)
                     img_kmeans, size_kmeans, byte_kmeans = compress_kmeans(original_img, kmeans_c)
                     img_svd, size_svd, byte_svd = compress_svd(original_img, svd_k)
+                    img_combo, size_combo, byte_combo = compress_combined(original_img, jpeg_q, kmeans_c, svd_k)
                     
-                    # Tampilkan dalam 4 Kolom
-                    col1, col2, col3, col4 = st.columns(4)
+                    # Tampilkan dalam 5 Kolom Sejajar
+                    col1, col2, col3, col4, col5 = st.columns(5)
                     
                     with col1:
-                        st.markdown("<h4 style='text-align: center;'>Gambar Asli</h4>", unsafe_allow_html=True)
+                        st.markdown("<h5 style='text-align: center;'>Asli</h5>", unsafe_allow_html=True)
                         st.image(original_img, use_column_width=True)
-                        st.info(f"**Ukuran Awal:** {size_ori/1024:.2f} KB")
+                        st.info(f"**Ukuran:** {size_ori/1024:.2f} KB")
                         
                     with col2:
-                        st.markdown("<h4 style='text-align: center;'>1. JPEG Standard</h4>", unsafe_allow_html=True)
+                        st.markdown("<h5 style='text-align: center;'>1. JPEG</h5>", unsafe_allow_html=True)
                         st.image(img_jpeg, use_column_width=True)
                         pct = ((size_ori - size_jpeg) / size_ori) * 100
-                        st.success(f"**Ukuran Baru:** {size_jpeg/1024:.2f} KB")
+                        st.success(f"**Ukuran:** {size_jpeg/1024:.2f} KB")
                         st.warning(f"**Susut:** {pct:.2f}%")
-                        st.download_button("⬇️ Unduh JPEG", byte_jpeg, f"JPEG_{uploaded_file.name}", "image/jpeg", key=f"d1_{index}")
+                        st.download_button("⬇️ JPEG", byte_jpeg, f"JPEG_{uploaded_file.name}", "image/jpeg", key=f"d1_{index}")
                         
                     with col3:
-                        st.markdown("<h4 style='text-align: center;'>2. K-Means</h4>", unsafe_allow_html=True)
+                        st.markdown("<h5 style='text-align: center;'>2. K-Means</h5>", unsafe_allow_html=True)
                         st.image(img_kmeans, use_column_width=True)
                         pct = ((size_ori - size_kmeans) / size_ori) * 100
-                        st.success(f"**Ukuran Baru:** {size_kmeans/1024:.2f} KB")
+                        st.success(f"**Ukuran:** {size_kmeans/1024:.2f} KB")
                         st.warning(f"**Susut:** {pct:.2f}%")
-                        st.download_button("⬇️ Unduh K-Means", byte_kmeans, f"KMEANS_{uploaded_file.name}", "image/jpeg", key=f"d2_{index}")
+                        st.download_button("⬇️ K-Means", byte_kmeans, f"KMEANS_{uploaded_file.name}", "image/jpeg", key=f"d2_{index}")
                         
                     with col4:
-                        st.markdown("<h4 style='text-align: center;'>3. SVD</h4>", unsafe_allow_html=True)
+                        st.markdown("<h5 style='text-align: center;'>3. SVD</h5>", unsafe_allow_html=True)
                         st.image(img_svd, use_column_width=True)
                         pct = ((size_ori - size_svd) / size_ori) * 100
-                        st.success(f"**Ukuran Baru:** {size_svd/1024:.2f} KB")
+                        st.success(f"**Ukuran:** {size_svd/1024:.2f} KB")
                         st.warning(f"**Susut:** {pct:.2f}%")
-                        st.download_button("⬇️ Unduh SVD", byte_svd, f"SVD_{uploaded_file.name}", "image/jpeg", key=f"d3_{index}")
+                        st.download_button("⬇️ SVD", byte_svd, f"SVD_{uploaded_file.name}", "image/jpeg", key=f"d3_{index}")
+                        
+                    with col5:
+                        st.markdown("<h5 style='text-align: center;'>🔥 Kombinasi (3)</h5>", unsafe_allow_html=True)
+                        st.image(img_combo, use_column_width=True)
+                        pct = ((size_ori - size_combo) / size_ori) * 100
+                        st.success(f"**Ukuran:** {size_combo/1024:.2f} KB")
+                        st.warning(f"**Susut:** {pct:.2f}%")
+                        st.download_button("⬇️ Kombinasi", byte_combo, f"COMBO_{uploaded_file.name}", "image/jpeg", key=f"d4_{index}")
                         
                     # Simpan data untuk tabel
                     report_data.append({
@@ -140,12 +187,13 @@ if uploaded_files:
                         "Asli (KB)": round(size_ori / 1024, 2),
                         "JPEG Standard (KB)": round(size_jpeg / 1024, 2),
                         "K-Means (KB)": round(size_kmeans / 1024, 2),
-                        "SVD (KB)": round(size_svd / 1024, 2)
+                        "SVD (KB)": round(size_svd / 1024, 2),
+                        "Kombinasi (KB)": round(size_combo / 1024, 2)
                     })
 
         # 4. Tabel dan Grafik Ringkasan
         st.divider()
-        st.write("### 📈 Rangkuman Performa 3 Algoritma")
+        st.write("### 📈 Rangkuman Performa 3 Algoritma & Kombinasi")
         
         df_report = pd.DataFrame(report_data)
         st.dataframe(df_report, use_container_width=True)
@@ -153,6 +201,5 @@ if uploaded_files:
         st.write("#### Grafik Perbandingan Ukuran File")
         chart_data = df_report.set_index("Nama File")
         st.bar_chart(chart_data)
-
 else:
     st.info("💡 Tips: Anda bisa memblok/memilih 10 file sekaligus di dalam folder saat menekan tombol Browse files.")
