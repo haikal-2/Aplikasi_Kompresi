@@ -96,7 +96,7 @@ def compress_combined(image_pil, quality_value, n_colors, k_values):
 # ==========================================
 st.set_page_config(page_title="Studi Komparasi 3 Algoritma", layout="wide", page_icon="⚖️")
 
-st.title("⚖️ Studi Komparasi 3 Algoritma Kompresi (JPEG)")
+st.title("Studi Komparasi 3 Algoritma Kompresi (JPEG)")
 st.write("Membandingkan performa individu: **JPEG Standard, K-Means, dan SVD**, serta **Kompresi Gabungan (Hybrid)** dari ketiganya.")
 
 # 1. Area Upload Gambar
@@ -107,7 +107,7 @@ uploaded_files = st.file_uploader(
 )
 
 # 2. Area Pengaturan 3 Algoritma (Sidebar)
-st.sidebar.header("⚙️ Pengaturan Parameter")
+st.sidebar.header("Pengaturan Parameter")
 
 st.sidebar.markdown("**1. Algoritma JPEG Standard**")
 jpeg_q = st.sidebar.slider("Tingkat Kualitas (%)", 1, 100, 30)
@@ -122,10 +122,10 @@ svd_k = st.sidebar.slider("Komponen Utama (k)", 10, 200, 50)
 
 # 3. Proses Komparasi
 if uploaded_files:
-    if st.sidebar.button("🚀 Mulai Uji Komparasi", use_container_width=True):
+    if st.sidebar.button("Mulai Uji Komparasi", use_container_width=True):
         
         report_data = []
-        st.write("### 📸 Perbandingan Visual per Gambar")
+        st.write("Perbandingan Visual per Gambar")
         
         for index, uploaded_file in enumerate(uploaded_files):
             with st.expander(f"Gambar {index+1}: {uploaded_file.name}", expanded=True):
@@ -193,7 +193,7 @@ if uploaded_files:
 
         # 4. Tabel dan Grafik Ringkasan
         st.divider()
-        st.write("### 📈 Rangkuman Performa 3 Algoritma & Kombinasi")
+        st.write("Rangkuman Performa 3 Algoritma & Kombinasi")
         
         df_report = pd.DataFrame(report_data)
         st.dataframe(df_report, use_container_width=True)
