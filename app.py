@@ -94,7 +94,7 @@ def compress_combined(image_pil, quality_value, n_colors, k_values):
 # ==========================================
 # ANTARMUKA PENGGUNA (GUI) - VERSI PRESENTASI + SVD + KOMBINASI
 # ==========================================
-st.set_page_config(page_title="Studi Komparasi 3 Algoritma", layout="wide", page_icon="⚖️")
+st.set_page_config(page_title="Studi Komparasi 3 Algoritma", layout="wide", page_icon="K4")
 
 st.title("Studi Komparasi 3 Algoritma Kompresi (JPEG)")
 st.write("Membandingkan performa individu: **JPEG Standard, K-Means, dan SVD**, serta **Kompresi Gabungan (Hybrid)** dari ketiganya.")
@@ -174,7 +174,7 @@ if uploaded_files:
                         st.download_button("⬇️ SVD", byte_svd, f"SVD_{uploaded_file.name}", "image/jpeg", key=f"d3_{index}")
                         
                     with col5:
-                        st.markdown("<h5 style='text-align: center;'>🔥 Kombinasi (3)</h5>", unsafe_allow_html=True)
+                        st.markdown("<h5 style='text-align: center;'>Kombinasi (3)</h5>", unsafe_allow_html=True)
                         st.image(img_combo, use_column_width=True)
                         pct = ((size_ori - size_combo) / size_ori) * 100
                         st.success(f"**Ukuran:** {size_combo/1024:.2f} KB")
@@ -202,4 +202,4 @@ if uploaded_files:
         chart_data = df_report.set_index("Nama File")
         st.bar_chart(chart_data)
 else:
-    st.info("💡 Tips: Anda bisa memblok/memilih 10 file sekaligus di dalam folder saat menekan tombol Browse files.")
+    st.info("Anda bisa memblok/memilih 10 file sekaligus di dalam folder saat menekan tombol Browse files.")
