@@ -90,7 +90,7 @@ def calculate_psnr(original, compressed):
 st.set_page_config(
     page_title="Komparasi Kompresi Gambar",
     layout="wide",
-    page_icon="🖼️"
+    page_icon="K4"
 )
 
 # ============================================================
@@ -310,13 +310,13 @@ st.markdown("""
 # ============================================================
 st.markdown("""
 <div class="hero">
-    <div class="hero-title">🖼️ Komparasi <em>Algoritma Kompresi</em> Gambar</div>
+    <div class="hero-title">Komparasi <em>Algoritma Kompresi</em> Gambar</div>
     <p class="hero-sub">Analisis visual & numerik <b>sebelum → sesudah</b> kompresi secara side-by-side</p>
     <div class="badge-row">
-        <span class="badge b-jpeg">📷 JPEG Standard</span>
-        <span class="badge b-km">🎨 K-Means</span>
-        <span class="badge b-svd">🧮 SVD</span>
-        <span class="badge b-hyb">🔥 Hybrid (3-in-1)</span>
+        <span class="badge b-jpeg">JPEG Standard</span>
+        <span class="badge b-km">K-Means</span>
+        <span class="badge b-svd">SVD</span>
+        <span class="badge b-hyb">Hybrid (3-in-1)</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -325,14 +325,14 @@ st.markdown("""
 # ============================================================
 # PENGATURAN PARAMETER — TANPA SIDEBAR
 # ============================================================
-with st.expander("⚙️  Atur Parameter Algoritma", expanded=True):
+with st.expander("Atur Parameter Algoritma", expanded=True):
     st.markdown("<br>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
 
     with c1:
         st.markdown("""
         <div class="param-card c-jpeg">
-            <h4 style="color:#60a5fa;">📷 JPEG Standard</h4>
+            <h4 style="color:#60a5fa;">JPEG Standard</h4>
             <p>Kompresi lossy berbasis DCT — standar industri</p>
         </div>
         """, unsafe_allow_html=True)
@@ -342,7 +342,7 @@ with st.expander("⚙️  Atur Parameter Algoritma", expanded=True):
     with c2:
         st.markdown("""
         <div class="param-card c-km">
-            <h4 style="color:#4ade80;">🎨 K-Means Clustering</h4>
+            <h4 style="color:#4ade80;">K-Means Clustering</h4>
             <p>Kuantisasi warna piksel ke k warna dominan</p>
         </div>
         """, unsafe_allow_html=True)
@@ -352,7 +352,7 @@ with st.expander("⚙️  Atur Parameter Algoritma", expanded=True):
     with c3:
         st.markdown("""
         <div class="param-card c-svd">
-            <h4 style="color:#c084fc;">🧮 SVD</h4>
+            <h4 style="color:#c084fc;">SVD</h4>
             <p>Aproksimasi matriks dengan k nilai singular terbesar</p>
         </div>
         """, unsafe_allow_html=True)
@@ -364,7 +364,7 @@ with st.expander("⚙️  Atur Parameter Algoritma", expanded=True):
 # ============================================================
 # UPLOAD
 # ============================================================
-st.markdown("### 📁  Unggah Gambar")
+st.markdown("### Unggah Gambar")
 uploaded_files = st.file_uploader(
     "Pilih gambar JPEG",
     type=["jpg", "jpeg", "JPG", "JPEG"],
@@ -374,7 +374,7 @@ uploaded_files = st.file_uploader(
 
 if uploaded_files:
     total_kb = sum(len(f.getvalue()) for f in uploaded_files) / 1024
-    ready_txt = "✅ Siap diproses" if len(uploaded_files) >= 1 else "⚠️ Min. 1 gambar"
+    ready_txt = "Siap diproses" if len(uploaded_files) >= 1 else "Min. 1 gambar"
     st.markdown(f"""
     <div class="stat-strip">
         <div class="stat-pill"><div class="val">{len(uploaded_files)}</div><div class="lbl">GAMBAR DIUNGGAH</div></div>
@@ -387,7 +387,7 @@ if uploaded_files:
 
     bc1, bc2, bc3 = st.columns([1.5, 2, 1.5])
     with bc2:
-        start_btn = st.button("🚀  Mulai Uji Komparasi", use_container_width=True)
+        start_btn = st.button("Mulai Komparasi", use_container_width=True)
 
     # ============================================================
     # PROCESSING LOOP
@@ -397,7 +397,7 @@ if uploaded_files:
 
         for index, uploaded_file in enumerate(uploaded_files):
 
-            with st.spinner(f"⏳  Memproses gambar {index+1}/{len(uploaded_files)}: {uploaded_file.name}"):
+            with st.spinner(f"Memproses gambar {index+1}/{len(uploaded_files)}: {uploaded_file.name}"):
                 original_img = Image.open(uploaded_file).convert("RGB")
                 size_ori = len(uploaded_file.getvalue())
                 w_px, h_px = original_img.size
@@ -432,7 +432,7 @@ if uploaded_files:
 
             # --- BEFORE (Original) ---
             with cols[0]:
-                st.markdown('<span class="col-label cl-before">⬛ BEFORE (Asli)</span>',
+                st.markdown('<span class="col-label cl-before">BEFORE (Asli)</span>',
                             unsafe_allow_html=True)
                 st.image(original_img, use_column_width=True)
                 st.markdown(f"""
@@ -447,7 +447,7 @@ if uploaded_files:
             with cols[1]:
                 pct_j, css_j = susut(size_ori, size_jpeg)
                 bar_w = max(2, int(abs(pct_j)))
-                st.markdown('<span class="col-label cl-jpeg">📷 JPEG Standard</span>',
+                st.markdown('<span class="col-label cl-jpeg">JPEG Standard</span>',
                             unsafe_allow_html=True)
                 st.image(img_jpeg, use_column_width=True)
                 st.markdown(f"""
@@ -460,7 +460,7 @@ if uploaded_files:
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-                st.download_button("⬇️ Unduh JPEG", byte_jpeg,
+                st.download_button("Unduh JPEG", byte_jpeg,
                                    f"JPEG_{uploaded_file.name}", "image/jpeg",
                                    key=f"d1_{index}", use_container_width=True)
 
@@ -468,7 +468,7 @@ if uploaded_files:
             with cols[2]:
                 pct_k, css_k = susut(size_ori, size_km)
                 bar_w = max(2, int(abs(pct_k)))
-                st.markdown('<span class="col-label cl-km">🎨 K-Means</span>',
+                st.markdown('<span class="col-label cl-km">K-Means</span>',
                             unsafe_allow_html=True)
                 st.image(img_km, use_column_width=True)
                 st.markdown(f"""
@@ -481,7 +481,7 @@ if uploaded_files:
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-                st.download_button("⬇️ Unduh K-Means", byte_km,
+                st.download_button("Unduh K-Means", byte_km,
                                    f"KMEANS_{uploaded_file.name}", "image/jpeg",
                                    key=f"d2_{index}", use_container_width=True)
 
@@ -489,7 +489,7 @@ if uploaded_files:
             with cols[3]:
                 pct_s, css_s = susut(size_ori, size_svd)
                 bar_w = max(2, int(abs(pct_s)))
-                st.markdown('<span class="col-label cl-svd">🧮 SVD</span>',
+                st.markdown('<span class="col-label cl-svd">SVD</span>',
                             unsafe_allow_html=True)
                 st.image(img_svd, use_column_width=True)
                 st.markdown(f"""
@@ -502,7 +502,7 @@ if uploaded_files:
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-                st.download_button("⬇️ Unduh SVD", byte_svd,
+                st.download_button("Unduh SVD", byte_svd,
                                    f"SVD_{uploaded_file.name}", "image/jpeg",
                                    key=f"d3_{index}", use_container_width=True)
 
@@ -510,7 +510,7 @@ if uploaded_files:
             with cols[4]:
                 pct_h, css_h = susut(size_ori, size_hyb)
                 bar_w = max(2, int(abs(pct_h)))
-                st.markdown('<span class="col-label cl-hyb">🔥 Hybrid (3-in-1)</span>',
+                st.markdown('<span class="col-label cl-hyb">Hybrid (3-in-1)</span>',
                             unsafe_allow_html=True)
                 st.image(img_hyb, use_column_width=True)
                 st.markdown(f"""
@@ -523,7 +523,7 @@ if uploaded_files:
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-                st.download_button("⬇️ Unduh Hybrid", byte_hyb,
+                st.download_button("Unduh Hybrid", byte_hyb,
                                    f"COMBO_{uploaded_file.name}", "image/jpeg",
                                    key=f"d4_{index}", use_container_width=True)
 
@@ -549,24 +549,24 @@ if uploaded_files:
         # RINGKASAN AKHIR
         # ============================================================
         st.markdown("---")
-        st.markdown("### 📈  Ringkasan Performa Keseluruhan")
+        st.markdown("### Ringkasan Performa Keseluruhan")
 
         df = pd.DataFrame(report_data)
 
         # Avg susut per algoritma
         m1, m2, m3, m4 = st.columns(4)
         avg_data = [
-            ("📷 JPEG Standard", df["JPEG Susut (%)"].mean(),   df["JPEG PSNR (dB)"].mean()),
-            ("🎨 K-Means",       df["K-Means Susut (%)"].mean(), df["K-Means PSNR (dB)"].mean()),
-            ("🧮 SVD",           df["SVD Susut (%)"].mean(),     df["SVD PSNR (dB)"].mean()),
-            ("🔥 Hybrid",        df["Hybrid Susut (%)"].mean(),  df["Hybrid PSNR (dB)"].mean()),
+            ("JPEG Standard", df["JPEG Susut (%)"].mean(),   df["JPEG PSNR (dB)"].mean()),
+            ("K-Means",       df["K-Means Susut (%)"].mean(), df["K-Means PSNR (dB)"].mean()),
+            ("SVD",           df["SVD Susut (%)"].mean(),     df["SVD PSNR (dB)"].mean()),
+            ("Hybrid",        df["Hybrid Susut (%)"].mean(),  df["Hybrid PSNR (dB)"].mean()),
         ]
         for col, (lbl, susut_avg, psnr_avg) in zip([m1, m2, m3, m4], avg_data):
             col.metric(lbl, f"{susut_avg:.1f}% susut", f"PSNR rata-rata: {psnr_avg:.1f} dB")
 
         st.markdown("")
 
-        tab_tbl, tab_chart = st.tabs(["📋  Tabel Detail", "📊  Grafik Ukuran File"])
+        tab_tbl, tab_chart = st.tabs(["Tabel Detail", "Grafik Ukuran File"])
 
         with tab_tbl:
             display_cols = [
@@ -590,14 +590,14 @@ if uploaded_files:
 else:
     st.markdown("""
     <div class="empty-state">
-        <div class="empty-icon">🖼️</div>
+        <div class="empty-icon"></div>
         <div class="empty-title">Unggah Gambar untuk Mulai</div>
         <div class="empty-sub">Klik tombol <b>Browse files</b> di atas, pilih minimal 10 gambar JPEG, lalu tekan <b>Mulai Uji Komparasi</b></div>
         <div class="algo-chip-row">
-            <span class="algo-chip b-jpeg">📷 JPEG Standard</span>
-            <span class="algo-chip b-km">🎨 K-Means</span>
-            <span class="algo-chip b-svd">🧮 SVD</span>
-            <span class="algo-chip b-hyb">🔥 Hybrid</span>
+            <span class="algo-chip b-jpeg">JPEG Standard</span>
+            <span class="algo-chip b-km">K-Means</span>
+            <span class="algo-chip b-svd">SVD</span>
+            <span class="algo-chip b-hyb">Hybrid</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
