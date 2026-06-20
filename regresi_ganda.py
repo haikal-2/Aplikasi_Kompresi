@@ -1,11 +1,10 @@
 """
-====================================================
-Implementasi Regresi Linear Berganda (Multiple Linear Regression)
-Dataset : California Housing — Synthetic (20.000 records)
-Variabel X : Pendapatan_Median, Usia_Rumah, Rata_Kamar, Populasi (4 variabel)
-Variabel Y : Harga_Rumah
-Visualisasi: Correlation Heatmap + Scatter Plot Grid + Evaluation Plots
-====================================================
+==========================================================
+Implementasi Regresi Linear Berganda
+Dataset  : Video Game Sales  (vgsales.csv — Kaggle)
+Variabel : X1 NA_Sales   X2 EU_Sales   X3 JP_Sales
+           Y  Global_Sales
+==========================================================
 """
 
 import streamlit as st
@@ -13,593 +12,628 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.linear_model  import LinearRegression
+from matplotlib.colors import LinearSegmentedColormap
+from sklearn.linear_model    import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 import warnings
 warnings.filterwarnings("ignore")
 
-# ─────────────────────────────────────────────────────────────
+DATA_PATH = "vgsales.csv"
+SAMPLE_N  = 500
+SEED      = 42
+X_COLS    = ["NA_Sales", "EU_Sales", "JP_Sales"]
+Y_COL     = "Global_Sales"
+
+
+# ──────────────────────────────────────────────────────────────
 # PAGE CONFIG
-# ─────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Regresi Linear Berganda",
     layout="wide",
-    page_icon="📈"
+    page_icon=None,
 )
 
-# ─────────────────────────────────────────────────────────────
-# CSS — Dark Research Dashboard
-# ─────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
+# CSS  —  Hitam-Putih / Mathematical Monograph Style
+# ──────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-  html, body, .stApp { background-color:#0a0e17 !important; color:#cdd6f4; font-family:'Segoe UI',sans-serif; }
-  #MainMenu,footer,header { visibility:hidden; }
-  .block-container { padding:1.5rem 2.5rem 3rem; max-width:1380px; }
-
-  /* ─ HERO ─ */
-  .hero {
-    background:linear-gradient(160deg,#0f1b35 0%,#0d1b2a 40%,#110d20 100%);
-    border:1px solid #1e2d45; border-radius:20px;
-    padding:2.8rem 2rem 2.4rem; margin-bottom:2rem; text-align:center;
-    position:relative; overflow:hidden;
+  html, body, .stApp {
+    background-color: #0c0c0c !important;
+    color: #e8e8e8;
+    font-family: 'Georgia', 'Times New Roman', serif;
   }
-  .hero::after {
-    content:''; position:absolute; inset:0;
-    background:radial-gradient(ellipse 70% 50% at 50% 0%,rgba(96,165,250,.07) 0%,transparent 65%);
-    pointer-events:none;
-  }
-  .hero-title { font-size:2.1rem; font-weight:900; color:#f0f4ff; margin:0 0 .5rem; letter-spacing:-.5px; }
-  .hero-title em { font-style:normal; color:#60a5fa; }
-  .hero-sub  { color:#7a8ba8; font-size:.95rem; margin:0; }
-  .hero-note { color:#374151; font-size:.78rem; margin-top:.5rem; }
-  .badge-row { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:1.2rem; }
-  .badge { font-size:.75rem; font-weight:700; padding:4px 14px; border-radius:20px; }
-  .bx1 { background:#0c1f3a; border:1px solid #1d4ed8; color:#60a5fa; }
-  .bx2 { background:#0b2014; border:1px solid #15803d; color:#4ade80; }
-  .bx3 { background:#1a0d2e; border:1px solid #7c3aed; color:#c084fc; }
-  .bx4 { background:#2a180a; border:1px solid #b45309; color:#fbbf24; }
-  .by  { background:#1b0d2e; border:1px solid #9f1239; color:#fb7185; }
+  #MainMenu, footer, header { visibility: hidden; }
+  .block-container { padding: 2rem 3rem 4rem; max-width: 1360px; }
 
-  /* ─ SECTION HEADER ─ */
+  .page-header {
+    border-top: 3px solid #ffffff;
+    border-bottom: 1px solid #2a2a2a;
+    padding: 2.2rem 0 1.8rem;
+    margin-bottom: 2.5rem;
+    text-align: center;
+  }
+  .page-header h1 {
+    font-size: 2rem; font-weight: 700; color: #ffffff;
+    letter-spacing: 1px; margin: 0 0 .5rem;
+    font-family: 'Georgia', serif;
+    text-transform: uppercase;
+  }
+  .page-header p { color: #666666; font-size: .9rem; margin: 0; font-family: 'Courier New', monospace; }
+  .page-header .sub { color: #444444; font-size: .78rem; margin-top: .4rem; letter-spacing: .5px; }
+
+  .tag-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 1.2rem; }
+  .tag {
+    font-family: 'Courier New', monospace;
+    font-size: .72rem; font-weight: 700; letter-spacing: .8px;
+    padding: 3px 12px; border: 1px solid #333333; color: #aaaaaa;
+    text-transform: uppercase;
+  }
+  .tag-y { border-color: #888888; color: #ffffff; }
+
   .sec-hdr {
-    font-size:1.1rem; font-weight:800; color:#f0f4ff;
-    padding-bottom:.5rem; border-bottom:2px solid #1f2d3d;
-    margin-bottom:1.4rem; letter-spacing:-.2px;
+    font-family: 'Georgia', serif;
+    font-size: 1rem; font-weight: 700;
+    color: #ffffff; letter-spacing: .5px;
+    text-transform: uppercase;
+    padding-bottom: .5rem;
+    border-bottom: 1px solid #2a2a2a;
+    margin-bottom: 1.4rem;
+  }
+  .sec-num { font-family: 'Courier New', monospace; color: #555555; margin-right: .6rem; font-size: .85rem; }
+
+  .stat-strip { display: flex; gap: 10px; margin-bottom: 1.5rem; }
+  .stat-box {
+    background: #111111; border: 1px solid #222222;
+    padding: .8rem 1rem; flex: 1; text-align: center;
+  }
+  .sv { font-size: 1.5rem; font-weight: 700; color: #ffffff; font-family: 'Courier New', monospace; }
+  .sl { font-size: .66rem; color: #555555; letter-spacing: .8px; margin-top: 3px;
+        font-family: 'Courier New', monospace; text-transform: uppercase; }
+
+  .pipe-row { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .pipe-step {
+    background: #111111; border: 1px solid #222222;
+    padding: .6rem 1rem; text-align: center; flex: 1; min-width: 140px;
+  }
+  .pipe-step .pv { font-size: 1.2rem; font-weight: 700; color: #ffffff; font-family: 'Courier New', monospace; }
+  .pipe-step .pl { font-size: .65rem; color: #555555; margin-top: 2px; font-family: 'Courier New', monospace;
+                    text-transform: uppercase; letter-spacing: .5px; }
+  .pipe-arrow { color: #444444; font-family: 'Courier New', monospace; font-size: 1rem; }
+
+  .var-tbl { width: 100%; border-collapse: collapse; font-size: .83rem;
+             margin-bottom: 1rem; font-family: 'Courier New', monospace; }
+  .var-tbl th {
+    background: #161616; color: #aaaaaa; padding: 8px 14px;
+    font-weight: 700; text-align: left;
+    border-bottom: 2px solid #2a2a2a; letter-spacing: .5px;
+  }
+  .var-tbl td { background: #111111; color: #cccccc; padding: 7px 14px; border-bottom: 1px solid #1a1a1a; }
+  .var-tbl tr:hover td { background: #161616; }
+  .tx { border: 1px solid #333333; color: #999999; padding: 2px 8px; font-size: .68rem; font-weight: 700; letter-spacing: .5px; }
+  .ty { border: 1px solid #777777; color: #ffffff; padding: 2px 8px; font-size: .68rem; font-weight: 700; letter-spacing: .5px; }
+
+  .coef-tbl { width: 100%; border-collapse: collapse; font-size: .83rem; font-family: 'Courier New', monospace; }
+  .coef-tbl th {
+    background: #111111; color: #aaaaaa; padding: 9px 14px;
+    font-weight: 700; text-align: left; border-bottom: 2px solid #2a2a2a; letter-spacing: .5px;
+  }
+  .coef-tbl td { padding: 8px 14px; border-bottom: 1px solid #1a1a1a; color: #cccccc; }
+  .coef-tbl tr:hover td { background: #111111; }
+  .cp { color: #ffffff !important; font-weight: 700; }
+  .cn { color: #888888 !important; font-weight: 700; }
+
+  .mc {
+    background: #111111; border: 1px solid #222222;
+    border-left: 3px solid #ffffff;
+    padding: 1rem 1.2rem; text-align: center;
+  }
+  .mc .mv { font-size: 1.5rem; font-weight: 700; color: #ffffff; font-family: 'Courier New', monospace; }
+  .mc .ml { font-size: .66rem; color: #555555; letter-spacing: .8px; margin-top: 2px;
+             font-family: 'Courier New', monospace; text-transform: uppercase; }
+  .mc .md { font-size: .75rem; color: #777777; margin-top: 5px; font-family: 'Georgia', serif; }
+  .mc-dim { border-left-color: #444444; }
+  .mc-dim .mv { color: #aaaaaa; }
+
+  .interp-box {
+    background: #0f0f0f; border: 1px solid #222222;
+    border-left: 3px solid #ffffff;
+    padding: 1.2rem 1.6rem; font-size: .86rem;
+    line-height: 1.9; color: #bbbbbb;
+    font-family: 'Georgia', serif;
+  }
+  .interp-box b { color: #ffffff; }
+  .interp-box code { font-family: 'Courier New', monospace; background: #1a1a1a; padding: 1px 6px; color: #dddddd; }
+
+  .eq-label {
+    font-family: 'Courier New', monospace;
+    font-size: .72rem; color: #555555;
+    letter-spacing: 1px; text-transform: uppercase;
+    margin-bottom: .5rem;
   }
 
-  /* ─ STAT PILL ─ */
-  .stat-row  { display:flex; gap:12px; margin-bottom:1.5rem; }
-  .stat-pill { background:#111827; border:1px solid #1f2d3d; border-radius:12px;
-               padding:.7rem 1.2rem; flex:1; text-align:center; }
-  .sv  { font-size:1.7rem; font-weight:800; color:#60a5fa; }
-  .sl  { font-size:.7rem;  color:#6b7280; letter-spacing:.6px; margin-top:2px; }
-
-  /* ─ VAR TABLE ─ */
-  .var-tbl  { width:100%; border-collapse:collapse; font-size:.84rem; margin-bottom:1rem; }
-  .var-tbl th { background:#1e3a5f; color:#60a5fa; padding:8px 14px;
-                font-weight:700; text-align:left; }
-  .var-tbl td { background:#111827; color:#cdd6f4; padding:7px 14px;
-                border-bottom:1px solid #1a2535; }
-  .var-tbl tr:hover td { background:#141e2f; }
-  .tx  { background:#0c1f3a; border:1px solid #1d4ed8; color:#60a5fa;
-         padding:2px 9px; border-radius:10px; font-size:.7rem; font-weight:700; }
-  .ty  { background:#1b0822; border:1px solid #9f1239; color:#fb7185;
-         padding:2px 9px; border-radius:10px; font-size:.7rem; font-weight:700; }
-
-  /* ─ EQUATION BOX ─ */
-  .eq-box {
-    background:#0b1d36; border:1px solid #1d4ed8;
-    border-radius:14px; padding:1.3rem 1.8rem;
-    font-family:'Courier New',monospace; font-size:.95rem;
-    color:#93c5fd; text-align:center; line-height:2;
-    margin-bottom:1.2rem;
+  .stTabs [data-baseweb="tab-list"] { background: #111111; padding: 3px; border: 1px solid #222222; gap: 1px; }
+  .stTabs [data-baseweb="tab"] {
+    background: transparent; color: #555555; font-weight: 600; font-size: .82rem;
+    font-family: 'Courier New', monospace; letter-spacing: .3px;
   }
-  .eq-box b { color:#bfdbfe; }
+  .stTabs [aria-selected="true"] { background: #1e1e1e !important; color: #ffffff !important; }
 
-  /* ─ COEFF TABLE ─ */
-  .coef-tbl { width:100%; border-collapse:collapse; font-size:.84rem; }
-  .coef-tbl th { background:#111827; color:#60a5fa; padding:9px 14px;
-                 font-weight:700; text-align:left; border-bottom:2px solid #1f2d3d; }
-  .coef-tbl td { padding:8px 14px; border-bottom:1px solid #1a2535; color:#e2e8f0; }
-  .coef-tbl tr:hover td { background:#0d1623; }
-  .cp { color:#4ade80 !important; font-weight:700; font-family:monospace; }
-  .cn { color:#f87171 !important; font-weight:700; font-family:monospace; }
-
-  /* ─ METRIC CARD ─ */
-  .mc { background:#111827; border:1px solid #1f2d3d; border-radius:12px;
-        padding:1rem 1.2rem; border-left:4px solid; text-align:center; }
-  .mc .mv { font-size:1.7rem; font-weight:800; color:#f0f4ff; }
-  .mc .ml { font-size:.72rem; color:#6b7280; letter-spacing:.6px; margin-top:2px; }
-  .mc .md { font-size:.78rem; color:#9ca3af; margin-top:5px; }
-
-  /* ─ INTERPRETATION BOX ─ */
-  .interp-box { background:#0b1d36; border:1px solid #1f2d3d; border-radius:10px;
-                padding:1.1rem 1.4rem; font-size:.85rem; line-height:1.8; color:#c7d4eb; }
-  .interp-box b { color:#93c5fd; }
-
-  /* ─ TABS ─ */
-  .stTabs [data-baseweb="tab-list"] { background:#111827; border-radius:10px;
-    padding:4px; border:1px solid #1f2937; gap:2px; }
-  .stTabs [data-baseweb="tab"] { background:transparent; border-radius:8px;
-    color:#6b7280; font-weight:600; font-size:.85rem; }
-  .stTabs [aria-selected="true"] { background:#1e3a5f !important; color:#60a5fa !important; }
-
-  /* ─ MISC ─ */
-  hr { border-color:#1f2937 !important; margin:2rem 0 !important; }
-  div[data-testid="metric-container"] { background:#111827; border:1px solid #1f2d3d;
-    border-radius:10px; padding:1rem; }
+  hr { border-color: #1e1e1e !important; margin: 2.5rem 0 !important; }
+  .stDataFrame { font-family: 'Courier New', monospace !important; }
+  div[data-testid="metric-container"] { background: #111111; border: 1px solid #222222; padding: 1rem; }
+  .stInfo, .stError { background: #111111 !important; border: 1px solid #333333 !important; }
+  .katex { color: #e8e8e8 !important; }
+  .katex-display { margin: .5rem 0 !important; }
+  .stCaption p { color: #444444 !important; font-family: 'Courier New', monospace; font-size: .74rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
 
-# ─────────────────────────────────────────────────────────────
-# GENERATE DATASET  (20.000 records — California Housing style)
-# ─────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
+# MATPLOTLIB — Grayscale Mathematical Style
+# ──────────────────────────────────────────────────────────────
+BG    = "#0c0c0c"
+PANEL = "#111111"
+GRID  = "#1a1a1a"
+TICK  = "#555555"
+TXT   = "#cccccc"
+WHITE = "#f0f0f0"
+GRAY1 = "#888888"
+GRAY2 = "#555555"
+
+BW_CMAP = LinearSegmentedColormap.from_list("bw_div", ["#1a1a1a", "#555555", "#f0f0f0"])
+
+
+# ──────────────────────────────────────────────────────────────
+# DATA PIPELINE
+# ──────────────────────────────────────────────────────────────
+def load_raw_data(path: str) -> pd.DataFrame:
+    """Memuat dataset mentah dari berkas CSV."""
+    return pd.read_csv(path)
+
+
+def clean_data(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Membersihkan dataset:
+      - Membuang baris dengan nilai Year yang kosong.
+      - Membuang baris dengan Publisher kosong atau bernilai 'Unknown'.
+    """
+    df = df.dropna(subset=["Year", "Publisher"])
+    df = df[df["Publisher"] != "Unknown"]
+    return df.reset_index(drop=True)
+
+
+def sample_data(df: pd.DataFrame, n: int, seed: int) -> pd.DataFrame:
+    """Mengambil sampel acak sejumlah n baris dengan random_state tetap."""
+    return df.sample(n=n, random_state=seed).reset_index(drop=True)
+
+
 @st.cache_data
-def generate_data(n: int = 20_000) -> pd.DataFrame:
-    rng = np.random.default_rng(seed=42)
-
-    # ── Variabel Independen (X) ──────────────────────────────
-    pendapatan = rng.lognormal(mean=1.50, sigma=0.52, size=n).clip(0.50, 15.00)
-    usia_rumah = rng.uniform(1, 52, size=n)
-    rata_kamar = rng.lognormal(mean=1.60, sigma=0.40, size=n).clip(1.00, 15.00)
-    populasi   = rng.lognormal(mean=6.50, sigma=0.85, size=n).clip(3, 35_000)
-
-    # ── Variabel Dependen (Y) — persamaan linear + noise ────
-    noise      = rng.normal(0, 0.28, size=n)
-    harga      = (
-        -0.20
-        + 0.55 * pendapatan          # koef positif kuat
-        + 0.018 * usia_rumah         # koef positif lemah
-        + 0.09  * rata_kamar         # koef positif lemah-sedang
-        - 0.000035 * populasi        # koef negatif sangat kecil
-        + noise
-    ).clip(0.15, 5.00)
-
-    return pd.DataFrame({
-        "Pendapatan_Median": pendapatan.round(4),
-        "Usia_Rumah":        usia_rumah.round(1),
-        "Rata_Kamar":        rata_kamar.round(2),
-        "Populasi":          populasi.round(0).astype(int),
-        "Harga_Rumah":       harga.round(4),
-    })
+def prepare_dataset(path: str, n: int, seed: int):
+    raw     = load_raw_data(path)
+    cleaned = clean_data(raw)
+    sample  = sample_data(cleaned, n, seed)
+    return raw, cleaned, sample
 
 
-df = generate_data()
+try:
+    raw_df, cleaned_df, df = prepare_dataset(DATA_PATH, SAMPLE_N, SEED)
+except FileNotFoundError:
+    st.error(
+        f"Berkas '{DATA_PATH}' tidak ditemukan. "
+        f"Pastikan berkas tersebut berada pada direktori yang sama dengan skrip ini."
+    )
+    st.stop()
 
-X_COLS = ["Pendapatan_Median", "Usia_Rumah", "Rata_Kamar", "Populasi"]
-Y_COL  = "Harga_Rumah"
-
-X = df[X_COLS]
-y = df[Y_COL]
-
-# ─────────────────────────────────────────────────────────────
-# MATPLOTLIB GLOBAL STYLE
-# ─────────────────────────────────────────────────────────────
-BG_DARK  = "#0a0e17"
-BG_PANEL = "#111827"
-GRID_CLR = "#1f2937"
-TICK_CLR = "#6b7280"
-TXT_CLR  = "#e2e8f0"
-TITLE_CLR= "#f0f4ff"
-
-PALETTE  = ["#3b82f6", "#22c55e", "#a855f7", "#f59e0b"]   # per X
+X, y = df[X_COLS], df[Y_COL]
 
 
-# ─────────────────────────────────────────────────────────────
-# ❶  HERO
-# ─────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
+#  HEADER
+# ──────────────────────────────────────────────────────────────
 st.markdown("""
-<div class="hero">
-  <div class="hero-title">📈 Implementasi <em>Regresi Linear Berganda</em></div>
-  <p class="hero-sub">Multiple Linear Regression · 4 Variabel X · 1 Variabel Y</p>
-  <p class="hero-note">Dataset: California Housing (Synthetic) · sklearn-style · 20,000 records</p>
-  <div class="badge-row">
-    <span class="badge bx1">X₁ Pendapatan_Median</span>
-    <span class="badge bx2">X₂ Usia_Rumah</span>
-    <span class="badge bx3">X₃ Rata_Kamar</span>
-    <span class="badge bx4">X₄ Populasi</span>
-    <span class="badge by">Y  Harga_Rumah</span>
+<div class="page-header">
+  <h1>Regresi Linear Berganda</h1>
+  <p>Multiple Linear Regression  —  Video Game Sales Dataset</p>
+  <p class="sub">Sumber Data : vgsales.csv (Kaggle)  ·  Rentang Tahun 1980 - 2020</p>
+  <div class="tag-row">
+    <span class="tag">X1  NA_Sales</span>
+    <span class="tag">X2  EU_Sales</span>
+    <span class="tag">X3  JP_Sales</span>
+    <span class="tag tag-y">Y   Global_Sales</span>
   </div>
 </div>
 """, unsafe_allow_html=True)
 
 
-# ─────────────────────────────────────────────────────────────
-# ❷  INFORMASI DATASET
-# ─────────────────────────────────────────────────────────────
-st.markdown('<div class="sec-hdr">📋 1 · Informasi Dataset</div>', unsafe_allow_html=True)
+# ──────────────────────────────────────────────────────────────
+#  I.  INFORMASI DATASET
+# ──────────────────────────────────────────────────────────────
+st.markdown(
+    '<div class="sec-hdr"><span class="sec-num">I.</span>Informasi Dataset</div>',
+    unsafe_allow_html=True,
+)
 
+st.markdown('<div class="eq-label">Tahapan Pemrosesan Data</div>', unsafe_allow_html=True)
 st.markdown(f"""
-<div class="stat-row">
-  <div class="stat-pill"><div class="sv">{len(df):,}</div><div class="sl">TOTAL RECORDS</div></div>
-  <div class="stat-pill"><div class="sv">4</div><div class="sl">VARIABEL INDEPENDEN (X)</div></div>
-  <div class="stat-pill"><div class="sv">1</div><div class="sl">VARIABEL DEPENDEN (Y)</div></div>
-  <div class="stat-pill"><div class="sv">{df[Y_COL].mean():.3f}</div><div class="sl">RATA-RATA HARGA (×$100K)</div></div>
-  <div class="stat-pill"><div class="sv">{df[Y_COL].std():.3f}</div><div class="sl">STD DEV HARGA</div></div>
+<div class="pipe-row">
+  <div class="pipe-step"><div class="pv">{len(raw_df):,}</div><div class="pl">Baris Mentah</div></div>
+  <div class="pipe-arrow">&rarr;</div>
+  <div class="pipe-step"><div class="pv">{len(cleaned_df):,}</div><div class="pl">Setelah Pembersihan</div></div>
+  <div class="pipe-arrow">&rarr;</div>
+  <div class="pipe-step"><div class="pv">{len(df):,}</div><div class="pl">Sampel Digunakan</div></div>
 </div>
 """, unsafe_allow_html=True)
 
-# Tabel keterangan variabel
+st.markdown(f"""
+<div class="stat-strip">
+  <div class="stat-box"><div class="sv">{len(df):,}</div><div class="sl">Total Records (Sampel)</div></div>
+  <div class="stat-box"><div class="sv">3</div><div class="sl">Variabel Independen</div></div>
+  <div class="stat-box"><div class="sv">1</div><div class="sl">Variabel Dependen</div></div>
+  <div class="stat-box"><div class="sv">{df[Y_COL].mean():.3f}</div><div class="sl">Mean Y (Juta Unit)</div></div>
+  <div class="stat-box"><div class="sv">{df[Y_COL].std():.3f}</div><div class="sl">Std Dev Y</div></div>
+</div>
+""", unsafe_allow_html=True)
+
 st.markdown("""
 <table class="var-tbl">
+  <tr><th>Simbol</th><th>Kolom</th><th>Keterangan</th><th>Satuan</th><th>Tipe</th></tr>
   <tr>
-    <th>Simbol</th><th>Nama Kolom</th><th>Keterangan</th>
-    <th>Satuan</th><th>Tipe</th>
+    <td>X1</td><td>NA_Sales</td>
+    <td>Total penjualan game di kawasan Amerika Utara</td>
+    <td>Juta unit</td><td><span class="tx">Independen</span></td>
   </tr>
   <tr>
-    <td>X₁</td><td><code>Pendapatan_Median</code></td>
-    <td>Pendapatan median penduduk per blok</td>
-    <td>×$10,000 USD</td><td><span class="tx">INDEPENDEN</span></td>
+    <td>X2</td><td>EU_Sales</td>
+    <td>Total penjualan game di kawasan Eropa</td>
+    <td>Juta unit</td><td><span class="tx">Independen</span></td>
   </tr>
   <tr>
-    <td>X₂</td><td><code>Usia_Rumah</code></td>
-    <td>Rata-rata usia bangunan rumah di blok</td>
-    <td>Tahun</td><td><span class="tx">INDEPENDEN</span></td>
+    <td>X3</td><td>JP_Sales</td>
+    <td>Total penjualan game di kawasan Jepang</td>
+    <td>Juta unit</td><td><span class="tx">Independen</span></td>
   </tr>
   <tr>
-    <td>X₃</td><td><code>Rata_Kamar</code></td>
-    <td>Rata-rata jumlah kamar per rumah tangga</td>
-    <td>Unit</td><td><span class="tx">INDEPENDEN</span></td>
-  </tr>
-  <tr>
-    <td>X₄</td><td><code>Populasi</code></td>
-    <td>Total populasi di blok perumahan</td>
-    <td>Jiwa</td><td><span class="tx">INDEPENDEN</span></td>
-  </tr>
-  <tr>
-    <td>Y</td><td><code>Harga_Rumah</code></td>
-    <td>Nilai median rumah di blok (target prediksi)</td>
-    <td>×$100,000 USD</td><td><span class="ty">DEPENDEN</span></td>
+    <td>Y</td><td>Global_Sales</td>
+    <td>Total penjualan game secara global (target prediksi)</td>
+    <td>Juta unit</td><td><span class="ty">Dependen</span></td>
   </tr>
 </table>
 """, unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-t_prev, t_stat = st.tabs(["👁️  Preview 50 Baris Pertama", "📊  Statistik Deskriptif"])
-with t_prev:
-    st.dataframe(df.head(50), use_container_width=True)
-with t_stat:
-    st.dataframe(df.describe().round(4), use_container_width=True)
+t1, t2 = st.tabs(["Preview Data Sampel", "Statistik Deskriptif"])
+with t1:
+    preview_cols = ["Name", "Platform", "Year", "Genre"] + X_COLS + [Y_COL]
+    st.dataframe(df[preview_cols], use_container_width=True, height=380)
+with t2:
+    st.dataframe(df[X_COLS + [Y_COL]].describe().round(4), use_container_width=True)
 
 
-# ─────────────────────────────────────────────────────────────
-# ❸  HEATMAP KORELASI
-# ─────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
+#  II.  HEATMAP KORELASI
+# ──────────────────────────────────────────────────────────────
 st.markdown("---")
-st.markdown('<div class="sec-hdr">🔥 2 · Heatmap Korelasi Antar Variabel</div>',
-            unsafe_allow_html=True)
-st.caption("Nilai mendekati +1 = korelasi positif kuat · mendekati -1 = korelasi negatif kuat · 0 = tidak berkorelasi")
-
-corr = df.corr()
-
-fig_heat, ax_heat = plt.subplots(figsize=(7, 5.5))
-fig_heat.patch.set_facecolor(BG_DARK)
-ax_heat.set_facecolor(BG_DARK)
-
-# Label ramah baca
-tick_labels = ["Pendapatan\nMedian", "Usia\nRumah", "Rata\nKamar", "Populasi", "Harga\nRumah"]
-
-hm = sns.heatmap(
-    corr,
-    annot=True,
-    fmt=".3f",
-    cmap="coolwarm",
-    linewidths=0.6,
-    linecolor=GRID_CLR,
-    ax=ax_heat,
-    annot_kws={"size": 10, "weight": "bold"},
-    vmin=-1, vmax=1,
-    square=True,
-    xticklabels=tick_labels,
-    yticklabels=tick_labels,
+st.markdown(
+    '<div class="sec-hdr"><span class="sec-num">II.</span>Heatmap Korelasi Antar Variabel</div>',
+    unsafe_allow_html=True,
 )
+st.caption("Nilai r mendekati +1 : korelasi positif kuat.  Mendekati -1 : korelasi negatif kuat.  Mendekati 0 : tidak berkorelasi.")
 
-# Style colorbar
-cbar = ax_heat.collections[0].colorbar
-cbar.ax.tick_params(colors=TICK_CLR, labelsize=9)
-cbar.outline.set_edgecolor(GRID_CLR)
+corr = df[X_COLS + [Y_COL]].corr()
+tick_lbl = ["NA Sales", "EU Sales", "JP Sales", "Global Sales"]
 
-ax_heat.set_title("Matriks Korelasi — California Housing Synthetic",
-                  color=TITLE_CLR, fontsize=13, fontweight="bold", pad=14)
-ax_heat.tick_params(colors=TXT_CLR, labelsize=9)
-for sp in ax_heat.spines.values():
+fig_h, ax_h = plt.subplots(figsize=(6.6, 5.4))
+fig_h.patch.set_facecolor(BG)
+ax_h.set_facecolor(BG)
+
+sns.heatmap(
+    corr,
+    annot=True, fmt=".3f",
+    cmap=BW_CMAP,
+    linewidths=0.5, linecolor="#1e1e1e",
+    ax=ax_h,
+    annot_kws={"size": 11, "weight": "bold", "color": "#0c0c0c"},
+    vmin=-1, vmax=1, square=True,
+    xticklabels=tick_lbl, yticklabels=tick_lbl,
+)
+cbar = ax_h.collections[0].colorbar
+cbar.ax.tick_params(colors=TICK, labelsize=9)
+cbar.outline.set_edgecolor(GRID)
+ax_h.set_title("Matriks Korelasi — Video Game Sales",
+               color=WHITE, fontsize=12, fontweight="bold", fontfamily="Georgia", pad=14)
+ax_h.tick_params(colors=TXT, labelsize=9)
+for sp in ax_h.spines.values():
     sp.set_visible(False)
-
 plt.tight_layout()
 
-col_heat1, col_heat2 = st.columns([2.2, 1])
-with col_heat1:
-    st.pyplot(fig_heat)
-with col_heat2:
+col_h1, col_h2 = st.columns([2.1, 1])
+with col_h1:
+    st.pyplot(fig_h)
+with col_h2:
     st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("**📌 Interpretasi Korelasi:**")
+    st.markdown("**Nilai korelasi (r) dengan Y :**")
     for var in X_COLS:
         r_val = corr[Y_COL][var]
-        if   abs(r_val) >= 0.70: strength = "🔴 Kuat"
-        elif abs(r_val) >= 0.40: strength = "🟡 Sedang"
-        else:                    strength = "🟢 Lemah"
-        direction = "positif ↑" if r_val >= 0 else "negatif ↓"
-        st.markdown(f"- **{var}** vs Y: `r = {r_val:.3f}` → {strength}, {direction}")
+        if   abs(r_val) >= 0.70: kuat = "Kuat"
+        elif abs(r_val) >= 0.40: kuat = "Sedang"
+        else:                    kuat = "Lemah"
+        arah = "positif" if r_val >= 0 else "negatif"
+        st.markdown(
+            f"<span style='font-family:Courier New;font-size:.82rem;color:#888'>{var}</span>"
+            f"<br><span style='font-family:Courier New;font-size:.9rem;color:#fff;font-weight:700;'>"
+            f"r = {r_val:.4f}</span>"
+            f"<span style='font-size:.75rem;color:#555;'> — {kuat}, {arah}</span><br><br>",
+            unsafe_allow_html=True,
+        )
+    st.markdown("""
+<div style="border:1px solid #222; padding:.8rem 1rem; font-family:'Courier New',monospace; font-size:.75rem; color:#666; line-height:1.9;">
+<b style="color:#aaa;">Evans (1996)</b><br>
+|r| 0.00 - 0.19 : Sangat lemah<br>
+|r| 0.20 - 0.39 : Lemah<br>
+|r| 0.40 - 0.59 : Sedang<br>
+|r| 0.60 - 0.79 : Kuat<br>
+|r| 0.80 - 1.00 : Sangat kuat
+</div>
+""", unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.info("""
-**Aturan Umum (Evans, 1996):**
-- |r| 0.00–0.19 → Sangat lemah
-- |r| 0.20–0.39 → Lemah
-- |r| 0.40–0.59 → Sedang
-- |r| 0.60–0.79 → Kuat
-- |r| 0.80–1.00 → Sangat kuat
-""")
 
-
-# ─────────────────────────────────────────────────────────────
-# ❹  SCATTER PLOT  (masing-masing X vs Y)
-# ─────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
+#  III.  SCATTER PLOT
+# ──────────────────────────────────────────────────────────────
 st.markdown("---")
-st.markdown('<div class="sec-hdr">📉 3 · Scatter Plot — Setiap X terhadap Y</div>',
-            unsafe_allow_html=True)
-st.caption(f"Menggunakan sampel 2,000 titik acak dari total {len(df):,} data untuk keterbacaan visual. Garis putus-putus = garis tren regresi sederhana.")
-
-sample = df.sample(2_000, random_state=42)
+st.markdown(
+    '<div class="sec-hdr"><span class="sec-num">III.</span>Scatter Plot  —  Setiap X terhadap Y</div>',
+    unsafe_allow_html=True,
+)
+st.caption(f"Seluruh {len(df):,} titik pada sampel ditampilkan.  Garis putus-putus = garis tren regresi sederhana.")
 
 x_meta = {
-    "Pendapatan_Median": ("Pendapatan Median  (×$10K)",  "#3b82f6"),
-    "Usia_Rumah":        ("Usia Rata-rata Rumah (tahun)", "#22c55e"),
-    "Rata_Kamar":        ("Rata-rata Jumlah Kamar",       "#a855f7"),
-    "Populasi":          ("Populasi Blok (jiwa)",         "#f59e0b"),
+    "NA_Sales": "NA Sales  (Juta Unit)",
+    "EU_Sales": "EU Sales  (Juta Unit)",
+    "JP_Sales": "JP Sales  (Juta Unit)",
 }
 
-fig_sc, axes = plt.subplots(2, 2, figsize=(13, 9))
-fig_sc.patch.set_facecolor(BG_DARK)
-axes = axes.flatten()
+fig_sc, axes = plt.subplots(1, 3, figsize=(15, 5))
+fig_sc.patch.set_facecolor(BG)
 
-for i, (col, (xlabel, color)) in enumerate(x_meta.items()):
+for i, (col, xlabel) in enumerate(x_meta.items()):
     ax = axes[i]
-    ax.set_facecolor(BG_PANEL)
+    ax.set_facecolor(PANEL)
 
-    # Scatter
-    ax.scatter(
-        sample[col], sample[Y_COL],
-        color=color, alpha=0.45, s=14, edgecolors="none", zorder=2,
-    )
+    ax.scatter(df[col], df[Y_COL],
+               color=GRAY1, alpha=0.45, s=18, edgecolors="none", zorder=2)
 
-    # Garis tren (regresi sederhana)
-    m, b = np.polyfit(sample[col], sample[Y_COL], 1)
-    x_min, x_max = sample[col].min(), sample[col].max()
-    xs = np.linspace(x_min, x_max, 200)
+    m, b = np.polyfit(df[col], df[Y_COL], 1)
+    xs   = np.linspace(df[col].min(), df[col].max(), 200)
     r_val = corr[col][Y_COL]
     ax.plot(xs, m * xs + b,
-            color="white", lw=2, ls="--", alpha=0.85,
-            label=f"Tren  (r = {r_val:.3f})", zorder=3)
+            color=WHITE, lw=1.8, ls="--", alpha=0.9,
+            label=f"r = {r_val:.3f}", zorder=3)
 
-    # Annotations
-    ax.set_xlabel(xlabel, color=TICK_CLR, fontsize=10)
-    ax.set_ylabel("Harga Rumah  (×$100K)", color=TICK_CLR, fontsize=10)
-    ax.set_title(f"X{i+1}: {col}  vs  Y (Harga_Rumah)",
-                 color=TITLE_CLR, fontsize=11, fontweight="bold")
-    ax.tick_params(colors=TICK_CLR, labelsize=9)
-    ax.legend(fontsize=9, facecolor="#1f2937",
-              edgecolor="#374151", labelcolor="white", loc="upper left")
-    ax.grid(True, color=GRID_CLR, lw=0.5, ls="--")
+    ax.set_xlabel(xlabel, color=TICK, fontsize=9, fontfamily="Courier New")
+    ax.set_ylabel("Global Sales  (Juta Unit)", color=TICK, fontsize=9, fontfamily="Courier New")
+    ax.set_title(f"X{i+1}: {col}  vs  Y",
+                 color=WHITE, fontsize=11, fontweight="bold", fontfamily="Georgia")
+    ax.tick_params(colors=TICK, labelsize=8)
+    ax.legend(fontsize=9, facecolor="#161616", edgecolor="#2a2a2a", labelcolor=WHITE,
+              prop={"family": "Courier New"})
+    ax.grid(True, color=GRID, lw=0.5, ls="--")
     for sp in ax.spines.values():
-        sp.set_edgecolor(GRID_CLR)
+        sp.set_edgecolor(GRID)
 
-fig_sc.suptitle(
-    "Scatter Plot: Variabel Independen vs Harga Rumah",
-    color=TITLE_CLR, fontsize=14, fontweight="bold", y=1.01,
-)
+fig_sc.suptitle("Scatter Plot : Penjualan Regional  vs  Penjualan Global",
+                color=WHITE, fontsize=13, fontweight="bold", fontfamily="Georgia", y=1.03)
 plt.tight_layout()
 st.pyplot(fig_sc)
 
 
-# ─────────────────────────────────────────────────────────────
-# ❺  MODEL REGRESI LINEAR BERGANDA
-# ─────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
+#  IV.  MODEL REGRESI
+# ──────────────────────────────────────────────────────────────
 st.markdown("---")
-st.markdown('<div class="sec-hdr">🤖 4 · Model Regresi Linear Berganda</div>',
-            unsafe_allow_html=True)
-
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.20, random_state=42
-)
-
-model = LinearRegression()
-model.fit(X_train, y_train)
-y_pred = model.predict(X_test)
-
-b0  = model.intercept_
-coefs = model.coef_    # [b1, b2, b3, b4]
-
-# ── Persamaan regresi ────────────────────────────────────────
-parts = []
-for i, c in enumerate(coefs):
-    sign = "+" if c >= 0 else "−"
-    parts.append(f" {sign} {abs(c):.5f}·X{i+1}")
-
-eq_str = f"Ŷ  =  {b0:+.5f}{''.join(parts)}"
-
 st.markdown(
-    f'<div class="eq-box"><b>Persamaan Regresi:</b><br>{eq_str}<br>'
-    f'<span style="font-size:.78rem; color:#7ca3d1;">'
-    f'Ŷ = β₀ + β₁X₁ + β₂X₂ + β₃X₃ + β₄X₄</span></div>',
+    '<div class="sec-hdr"><span class="sec-num">IV.</span>Model Regresi Linear Berganda</div>',
     unsafe_allow_html=True,
 )
 
-# ── Tabel koefisien ─────────────────────────────────────────
-var_labels = [
-    ("β₀", "Intercept",           "—",                        "Nilai Y ketika semua X = 0"),
-    ("β₁", "Pendapatan_Median",   "×$10K / unit",              "Kenaikan 1 unit pendapatan → harga naik β₁×100K"),
-    ("β₂", "Usia_Rumah",          "tahun / unit",              "Kenaikan 1 tahun usia → harga berubah β₂×100K"),
-    ("β₃", "Rata_Kamar",          "kamar / unit",              "Kenaikan 1 kamar rata-rata → harga berubah β₃×100K"),
-    ("β₄", "Populasi",            "jiwa / unit",               "Kenaikan 1 jiwa populasi → harga berubah β₄×100K"),
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, random_state=SEED)
+model  = LinearRegression()
+model.fit(X_train, y_train)
+y_pred = model.predict(X_test)
+
+b0    = model.intercept_
+coefs = model.coef_
+
+st.markdown('<div class="eq-label">Bentuk Umum Persamaan Regresi</div>', unsafe_allow_html=True)
+st.latex(r"\hat{Y} = \beta_0 + \beta_1 X_1 + \beta_2 X_2 + \beta_3 X_3 + \varepsilon")
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+sign = [("+" if c >= 0 else "-") for c in coefs]
+cabs = [abs(v) for v in coefs]
+st.markdown('<div class="eq-label">Persamaan dengan Nilai Koefisien</div>', unsafe_allow_html=True)
+st.latex(
+    rf"\hat{{Y}} = {b0:.5f}"
+    rf"\ {sign[0]}\ {cabs[0]:.5f}\,X_1"
+    rf"\ {sign[1]}\ {cabs[1]:.5f}\,X_2"
+    rf"\ {sign[2]}\ {cabs[2]:.5f}\,X_3"
+)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+var_meta = [
+    ("b0", "Intercept (Konstan)", "—",            "Nilai Y ketika seluruh X = 0"),
+    ("b1", "NA_Sales",            "unit / unit",  "Naik 1 juta unit NA_Sales -> Global_Sales naik b1 juta unit"),
+    ("b2", "EU_Sales",            "unit / unit",  "Naik 1 juta unit EU_Sales -> Global_Sales naik b2 juta unit"),
+    ("b3", "JP_Sales",            "unit / unit",  "Naik 1 juta unit JP_Sales -> Global_Sales naik b3 juta unit"),
 ]
 all_coefs = [b0] + list(coefs)
-
 rows_html = ""
-for (sym, name, satuan, interp), coef in zip(var_labels, all_coefs):
-    css  = "cp" if coef >= 0 else "cn"
-    sign = "↑ positif" if coef >= 0 else "↓ negatif"
+for (sym, name, sat, interp), coef in zip(var_meta, all_coefs):
+    css = "cp" if coef >= 0 else "cn"
     rows_html += (
-        f"<tr>"
-        f"<td>{sym}</td><td><code>{name}</code></td>"
+        f"<tr><td>{sym}</td><td>{name}</td>"
         f"<td class='{css}'>{coef:+.6f}</td>"
-        f"<td>{sign}</td><td>{satuan}</td><td>{interp}</td>"
-        f"</tr>"
+        f"<td>{'positif' if coef >= 0 else 'negatif'}</td>"
+        f"<td>{sat}</td><td>{interp}</td></tr>"
     )
 
 st.markdown(f"""
 <table class="coef-tbl">
-  <tr>
-    <th>Simbol</th><th>Variabel</th><th>Koefisien</th>
-    <th>Arah</th><th>Satuan</th><th>Interpretasi</th>
-  </tr>
+  <tr><th>Simbol</th><th>Variabel</th><th>Koefisien</th><th>Arah</th><th>Satuan</th><th>Interpretasi</th></tr>
   {rows_html}
 </table>
 """, unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Variabel paling berpengaruh
 sorted_coefs = sorted(zip(X_COLS, coefs), key=lambda t: abs(t[1]), reverse=True)
-most_inf = sorted_coefs[0]
-st.info(
-    f"**Variabel paling berpengaruh:** `{most_inf[0]}` dengan |β| = **{abs(most_inf[1]):.5f}**  — "
-    f"setiap kenaikan 1 unit, harga rumah berubah sebesar **${abs(most_inf[1])*100_000:,.0f}** "
-    f"({'naik' if most_inf[1] > 0 else 'turun'})."
+most_inf     = sorted_coefs[0]
+st.markdown(
+    f'<div class="interp-box">'
+    f'<b>Variabel paling berpengaruh :</b> <code>{most_inf[0]}</code> '
+    f'dengan |beta| = <b>{abs(most_inf[1]):.5f}</b> — '
+    f'setiap kenaikan 1 juta unit penjualan di wilayah tersebut, '
+    f'penjualan global <b>{"naik" if most_inf[1] > 0 else "turun"}</b> '
+    f'sekitar <b>{abs(most_inf[1]):.3f} juta unit</b>.'
+    f'</div>',
+    unsafe_allow_html=True,
 )
 
 
-# ─────────────────────────────────────────────────────────────
-# ❻  EVALUASI MODEL
-# ─────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
+#  V.  EVALUASI MODEL
+# ──────────────────────────────────────────────────────────────
 st.markdown("---")
-st.markdown('<div class="sec-hdr">📊 5 · Evaluasi Model</div>', unsafe_allow_html=True)
-st.caption(f"Data uji: {len(y_test):,} records (20% dari total) · Data latih: {len(y_train):,} records (80%)")
+st.markdown(
+    '<div class="sec-hdr"><span class="sec-num">V.</span>Evaluasi Model</div>',
+    unsafe_allow_html=True,
+)
+st.caption(
+    f"Data latih : {len(y_train):,} records (80%)   |   "
+    f"Data uji : {len(y_test):,} records (20%)"
+)
 
 r2     = r2_score(y_test, y_pred)
-n, p   = len(y_test), len(X_COLS)
-adj_r2 = 1 - (1 - r2) * (n - 1) / (n - p - 1)
+n_t, p = len(y_test), len(X_COLS)
+adj_r2 = 1 - (1 - r2) * (n_t - 1) / (n_t - p - 1)
 rmse   = np.sqrt(mean_squared_error(y_test, y_pred))
 mae    = mean_absolute_error(y_test, y_pred)
 mse    = mean_squared_error(y_test, y_pred)
 
-# Metric cards
 mc1, mc2, mc3, mc4, mc5 = st.columns(5)
 metrics = [
-    (mc1, "#3b82f6", f"{r2:.4f}",     "R² SCORE",       f"Model menjelaskan {r2*100:.1f}% variansi Y"),
-    (mc2, "#22c55e", f"{adj_r2:.4f}", "ADJUSTED R²",    "R² dikoreksi jumlah prediktor"),
-    (mc3, "#f59e0b", f"{rmse:.4f}",   "RMSE",           f"≈ ${rmse*100_000:,.0f} rata-rata error"),
-    (mc4, "#a855f7", f"{mae:.4f}",    "MAE",            f"≈ ${mae*100_000:,.0f} deviasi absolut"),
-    (mc5, "#f87171", f"{mse:.4f}",    "MSE",            "Mean Squared Error"),
+    (mc1, False, f"{r2:.4f}",     "R-squared",   f"Model menjelaskan {r2*100:.2f}% variasi Y"),
+    (mc2, False, f"{adj_r2:.4f}", "Adjusted R2", "R2 terkoreksi jumlah prediktor"),
+    (mc3, True,  f"{rmse:.4f}",   "RMSE",        f"Rata-rata error : {rmse:.3f} juta unit"),
+    (mc4, True,  f"{mae:.4f}",    "MAE",         f"Deviasi absolut : {mae:.3f} juta unit"),
+    (mc5, True,  f"{mse:.4f}",    "MSE",         "Sensitif terhadap outlier"),
 ]
-for col, border, val, label, desc in metrics:
+for col, dim, val, lbl, desc in metrics:
+    css_extra = "mc-dim" if dim else ""
     col.markdown(
-        f'<div class="mc" style="border-left-color:{border};">'
+        f'<div class="mc {css_extra}">'
         f'<div class="mv">{val}</div>'
-        f'<div class="ml">{label}</div>'
+        f'<div class="ml">{lbl}</div>'
         f'<div class="md">{desc}</div></div>',
         unsafe_allow_html=True,
     )
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ── Plot Evaluasi 3-panel ────────────────────────────────────
-fig_eval, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
-fig_eval.patch.set_facecolor(BG_DARK)
-
 residuals = y_test - y_pred
+fig_ev, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 5))
+fig_ev.patch.set_facecolor(BG)
 
-# — Plot 1: Aktual vs Prediksi —
-ax1.set_facecolor(BG_PANEL)
-ax1.scatter(y_test, y_pred, color="#3b82f6", alpha=0.30, s=10, edgecolors="none", zorder=2)
-lim_lo = min(float(y_test.min()), float(y_pred.min()))
-lim_hi = max(float(y_test.max()), float(y_pred.max()))
-ax1.plot([lim_lo, lim_hi], [lim_lo, lim_hi],
-         color="#ef4444", lw=2, ls="--", label="Ideal (y = ŷ)", zorder=3)
-ax1.set_xlabel("Nilai Aktual", color=TICK_CLR, fontsize=10)
-ax1.set_ylabel("Nilai Prediksi", color=TICK_CLR, fontsize=10)
-ax1.set_title("Aktual  vs  Prediksi", color=TITLE_CLR, fontsize=12, fontweight="bold")
-ax1.tick_params(colors=TICK_CLR, labelsize=9)
-ax1.legend(facecolor="#1f2937", edgecolor="#374151", labelcolor="white", fontsize=9)
-ax1.grid(True, color=GRID_CLR, lw=0.5, ls="--")
-ax1.text(0.04, 0.94, f"R² = {r2:.4f}", transform=ax1.transAxes,
-         color="#93c5fd", fontsize=10, fontweight="bold",
-         bbox=dict(boxstyle="round,pad=0.3", facecolor="#0c1f3a", edgecolor="#1d4ed8"))
-for sp in ax1.spines.values(): sp.set_edgecolor(GRID_CLR)
+ax1.set_facecolor(PANEL)
+ax1.scatter(y_test, y_pred, color=GRAY1, alpha=0.35, s=14, edgecolors="none", zorder=2)
+lo = min(float(y_test.min()), float(y_pred.min()))
+hi = max(float(y_test.max()), float(y_pred.max()))
+ax1.plot([lo, hi], [lo, hi], color=WHITE, lw=1.8, ls="--", label="y = y_hat", zorder=3)
+ax1.set_xlabel("Nilai Aktual", color=TICK, fontsize=10, fontfamily="Courier New")
+ax1.set_ylabel("Nilai Prediksi", color=TICK, fontsize=10, fontfamily="Courier New")
+ax1.set_title("Aktual  vs  Prediksi", color=WHITE, fontsize=12, fontweight="bold", fontfamily="Georgia")
+ax1.tick_params(colors=TICK, labelsize=9)
+ax1.legend(facecolor="#161616", edgecolor="#2a2a2a", labelcolor=WHITE, fontsize=9, prop={"family": "Courier New"})
+ax1.grid(True, color=GRID, lw=0.5, ls="--")
+ax1.text(0.04, 0.94, f"R2 = {r2:.4f}", transform=ax1.transAxes,
+         color=WHITE, fontsize=10, fontweight="bold", fontfamily="Courier New",
+         bbox=dict(boxstyle="square,pad=0.3", facecolor="#161616", edgecolor="#2a2a2a"))
+for sp in ax1.spines.values(): sp.set_edgecolor(GRID)
 
-# — Plot 2: Residual vs Prediksi —
-ax2.set_facecolor(BG_PANEL)
-ax2.scatter(y_pred, residuals, color="#f59e0b", alpha=0.30, s=10, edgecolors="none", zorder=2)
-ax2.axhline(0, color="#ef4444", lw=2, ls="--", label="Residual = 0", zorder=3)
-ax2.set_xlabel("Nilai Prediksi (Ŷ)", color=TICK_CLR, fontsize=10)
-ax2.set_ylabel("Residual  (Y − Ŷ)", color=TICK_CLR, fontsize=10)
-ax2.set_title("Plot Residual", color=TITLE_CLR, fontsize=12, fontweight="bold")
-ax2.tick_params(colors=TICK_CLR, labelsize=9)
-ax2.legend(facecolor="#1f2937", edgecolor="#374151", labelcolor="white", fontsize=9)
-ax2.grid(True, color=GRID_CLR, lw=0.5, ls="--")
-for sp in ax2.spines.values(): sp.set_edgecolor(GRID_CLR)
+ax2.set_facecolor(PANEL)
+ax2.scatter(y_pred, residuals, color=GRAY1, alpha=0.35, s=14, edgecolors="none", zorder=2)
+ax2.axhline(0, color=WHITE, lw=1.8, ls="--", label="Residual = 0", zorder=3)
+ax2.set_xlabel("Nilai Prediksi", color=TICK, fontsize=10, fontfamily="Courier New")
+ax2.set_ylabel("Residual  (Y - Y_hat)", color=TICK, fontsize=10, fontfamily="Courier New")
+ax2.set_title("Plot Residual", color=WHITE, fontsize=12, fontweight="bold", fontfamily="Georgia")
+ax2.tick_params(colors=TICK, labelsize=9)
+ax2.legend(facecolor="#161616", edgecolor="#2a2a2a", labelcolor=WHITE, fontsize=9, prop={"family": "Courier New"})
+ax2.grid(True, color=GRID, lw=0.5, ls="--")
+for sp in ax2.spines.values(): sp.set_edgecolor(GRID)
 
-# — Plot 3: Distribusi Residual —
-ax3.set_facecolor(BG_PANEL)
-ax3.hist(residuals, bins=60, color="#a855f7", alpha=0.80, edgecolor=BG_DARK)
-ax3.axvline(0, color="#ef4444", lw=2, ls="--", label="Residual = 0")
-ax3.set_xlabel("Residual", color=TICK_CLR, fontsize=10)
-ax3.set_ylabel("Frekuensi", color=TICK_CLR, fontsize=10)
-ax3.set_title("Distribusi Residual", color=TITLE_CLR, fontsize=12, fontweight="bold")
-ax3.tick_params(colors=TICK_CLR, labelsize=9)
-ax3.legend(facecolor="#1f2937", edgecolor="#374151", labelcolor="white", fontsize=9)
-ax3.grid(True, color=GRID_CLR, lw=0.5, ls="--", axis="y")
-ax3.text(0.04, 0.94, f"μ = {residuals.mean():.4f}\nσ = {residuals.std():.4f}",
-         transform=ax3.transAxes, color="#c4b5fd", fontsize=9,
-         bbox=dict(boxstyle="round,pad=0.3", facecolor="#1b0d2e", edgecolor="#7c3aed"))
-for sp in ax3.spines.values(): sp.set_edgecolor(GRID_CLR)
+ax3.set_facecolor(PANEL)
+ax3.hist(residuals, bins=40, color=GRAY2, alpha=0.90, edgecolor=PANEL)
+ax3.axvline(0, color=WHITE, lw=1.8, ls="--", label="Residual = 0")
+ax3.set_xlabel("Residual", color=TICK, fontsize=10, fontfamily="Courier New")
+ax3.set_ylabel("Frekuensi", color=TICK, fontsize=10, fontfamily="Courier New")
+ax3.set_title("Distribusi Residual", color=WHITE, fontsize=12, fontweight="bold", fontfamily="Georgia")
+ax3.tick_params(colors=TICK, labelsize=9)
+ax3.legend(facecolor="#161616", edgecolor="#2a2a2a", labelcolor=WHITE, fontsize=9, prop={"family": "Courier New"})
+ax3.grid(True, color=GRID, lw=0.5, ls="--", axis="y")
+ax3.text(0.04, 0.94, f"mu = {residuals.mean():.4f}\nsigma = {residuals.std():.4f}",
+         transform=ax3.transAxes, color=TXT, fontsize=9, fontfamily="Courier New",
+         bbox=dict(boxstyle="square,pad=0.3", facecolor="#161616", edgecolor="#2a2a2a"))
+for sp in ax3.spines.values(): sp.set_edgecolor(GRID)
 
 plt.tight_layout(pad=2.5)
-st.pyplot(fig_eval)
+st.pyplot(fig_ev)
 
-# Penjelasan plot
-col_ex1, col_ex2, col_ex3 = st.columns(3)
-col_ex1.caption("💡 Titik-titik mendekati garis merah = prediksi mendekati nilai asli. Penyebaran simetris = model tidak bias.")
-col_ex2.caption("💡 Residual tersebar acak di sekitar nol (tidak ada pola) = asumsi homoskedastisitas terpenuhi.")
-col_ex3.caption("💡 Distribusi residual yang mendekati normal (lonceng simetris) menandakan model sudah fit dengan baik.")
+col_c1, col_c2, col_c3 = st.columns(3)
+col_c1.caption("Titik mendekati garis diagonal = prediksi mendekati nilai aktual.")
+col_c2.caption("Residual tersebar acak di sekitar nol = asumsi homoskedastisitas terpenuhi.")
+col_c3.caption("Distribusi residual yang sempit menunjukkan error prediksi relatif kecil dan konsisten.")
 
 
-# ─────────────────────────────────────────────────────────────
-# ❼  RINGKASAN & KESIMPULAN
-# ─────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
+#  VI.  KESIMPULAN
+# ──────────────────────────────────────────────────────────────
 st.markdown("---")
-st.markdown('<div class="sec-hdr">📝 6 · Kesimpulan & Interpretasi Model</div>',
-            unsafe_allow_html=True)
+st.markdown(
+    '<div class="sec-hdr"><span class="sec-num">VI.</span>Kesimpulan dan Interpretasi</div>',
+    unsafe_allow_html=True,
+)
 
 st.markdown(f"""
 | Metrik | Nilai | Interpretasi |
 |--------|-------|--------------|
-| **R² Score** | **{r2:.4f}** | Model menjelaskan **{r2*100:.1f}%** variasi harga rumah |
-| **Adjusted R²** | **{adj_r2:.4f}** | Konsisten dengan R² → variabel prediktor relevan |
-| **RMSE** | **{rmse:.4f}** | Rata-rata error prediksi ≈ **${rmse*100_000:,.0f}** per rumah |
-| **MAE** | **{mae:.4f}** | Rata-rata deviasi absolut ≈ **${mae*100_000:,.0f}** per rumah |
-| **MSE** | **{mse:.4f}** | Mean Squared Error (sensitif terhadap outlier) |
+| R2 Score | **{r2:.4f}** | Model menjelaskan **{r2*100:.2f}%** variasi penjualan global |
+| Adjusted R2 | **{adj_r2:.4f}** | Konsisten dengan R2 — seluruh variabel relevan |
+| RMSE | **{rmse:.4f}** | Rata-rata error prediksi sekitar **{rmse:.3f} juta unit** |
+| MAE | **{mae:.4f}** | Rata-rata deviasi absolut sekitar **{mae:.3f} juta unit** |
+| MSE | **{mse:.4f}** | Mean Squared Error (lebih sensitif terhadap outlier) |
 """)
 
-# Peringkat pengaruh variabel
 st.markdown("<br>", unsafe_allow_html=True)
-st.markdown("#### 🏆 Peringkat Pengaruh Variabel (berdasarkan |koefisien|)")
 
 rank_rows = ""
+max_abs = max(abs(c) for _, c in sorted_coefs)
 for rank, (var, coef) in enumerate(sorted_coefs, start=1):
-    bar = "█" * min(int(abs(coef) / max(abs(c) for _, c in sorted_coefs) * 20), 20)
-    css = "cp" if coef >= 0 else "cn"
+    bar_len = max(1, int(abs(coef) / max_abs * 18))
+    bar     = "\u2588" * bar_len + "\u2591" * (18 - bar_len)
+    css     = "cp" if coef >= 0 else "cn"
     rank_rows += (
-        f"<tr>"
-        f"<td>#{rank}</td><td><code>{var}</code></td>"
+        f"<tr><td>#{rank}</td><td>{var}</td>"
         f"<td class='{css}'>{coef:+.6f}</td>"
-        f"<td><span style='color:#3b82f6; font-family:monospace; letter-spacing:-1px;'>{bar}</span></td>"
-        f"</tr>"
+        f"<td style='font-family:Courier New;letter-spacing:-1px;color:#444'>{bar}</td></tr>"
     )
 
+st.markdown("**Peringkat Pengaruh Variabel berdasarkan nilai absolut koefisien :**")
 st.markdown(f"""
 <table class="coef-tbl">
   <tr><th>Peringkat</th><th>Variabel</th><th>Koefisien</th><th>Pengaruh Relatif</th></tr>
@@ -609,26 +643,26 @@ st.markdown(f"""
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Interpretasi lengkap
+kualitas = "sangat baik" if r2 >= 0.80 else "baik" if r2 >= 0.60 else "cukup"
 st.markdown(f"""
 <div class="interp-box">
-  <b>📌 Persamaan Akhir:</b><br>
-  <code style="color:#93c5fd;">{eq_str}</code><br><br>
-  <b>🔍 Temuan Utama:</b><br>
-  1. <b>Pendapatan_Median (X₁)</b> adalah prediktor terkuat dengan β₁ = <b>{coefs[0]:+.5f}</b> —
-     setiap kenaikan $10,000 pendapatan median, harga rumah naik rata-rata ${coefs[0]*100_000:,.0f}.<br>
-  2. <b>Rata_Kamar (X₃)</b> memiliki pengaruh positif β₃ = <b>{coefs[2]:+.5f}</b> —
-     semakin banyak kamar rata-rata, harga rumah cenderung lebih tinggi.<br>
-  3. <b>Usia_Rumah (X₂)</b> memiliki pengaruh positif kecil β₂ = <b>{coefs[1]:+.5f}</b>.<br>
-  4. <b>Populasi (X₄)</b> memiliki pengaruh negatif sangat kecil β₄ = <b>{coefs[3]:+.7f}</b> —
-     kepadatan populasi sedikit menekan harga rumah.<br><br>
-  <b>✅ Kualitas Model:</b> R² = <b>{r2:.4f}</b> menunjukkan model <b>{'sangat baik' if r2 >= 0.80 else 'baik' if r2 >= 0.60 else 'cukup'}</b>
-  dalam menjelaskan harga rumah berdasarkan 4 variabel yang dipilih.
+  <b>Temuan Utama :</b><br>
+  1. Ketiga variabel (<code>NA_Sales</code>, <code>EU_Sales</code>, <code>JP_Sales</code>) secara bersama-sama
+     memiliki hubungan linear yang sangat kuat terhadap <code>Global_Sales</code>,
+     karena ketiganya merupakan komponen penyusun penjualan global secara langsung.<br>
+  2. <code>EU_Sales (X2)</code> memberikan kontribusi terbesar dengan b2 = <b>{coefs[1]:+.5f}</b>,
+     diikuti oleh <code>NA_Sales (X1)</code> dengan b1 = <b>{coefs[0]:+.5f}</b>.<br>
+  3. <code>JP_Sales (X3)</code> tetap berkontribusi positif dengan b3 = <b>{coefs[2]:+.5f}</b>,
+     meskipun korelasinya terhadap Y relatif lebih lemah dibanding dua variabel lainnya.<br>
+  4. Residual yang tersisa terutama berasal dari <code>Other_Sales</code> —
+     komponen penjualan regional lain yang tidak disertakan sebagai variabel prediktor pada model ini.<br><br>
+  <b>Kualitas Model :</b> R2 = <b>{r2:.4f}</b> — model dinilai <b>{kualitas}</b>
+  dalam menjelaskan variasi penjualan global berdasarkan ketiga variabel penjualan regional yang dipilih.
 </div>
 """, unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 st.caption(
-    "📚 Referensi: Evans, J.D. (1996). Straightforward statistics for the behavioral sciences. "
-    "Dataset: California Housing Synthetic (generated with numpy, seed=42, n=20,000)."
+    "Referensi : Evans, J.D. (1996). Straightforward Statistics for the Behavioral Sciences.  "
+    f"Dataset : vgsales.csv (Kaggle, Video Game Sales) — sampel {SAMPLE_N} records, random_state={SEED}."
 )
